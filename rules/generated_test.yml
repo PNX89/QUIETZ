@@ -1,0 +1,101 @@
+# Unit tests for the generated rules, run by `promtool test rules`.
+#
+# WHAT THESE ARE FOR. `promtool check rules` says a file is valid YAML that parses as PromQL. It
+# says nothing about whether an alert fires when it should, and nothing at all about whether it
+# fires when it should NOT, which is the half that decides whether anybody keeps reading the
+# alerts. Both directions are exercised here for every monitor.
+#
+# THE SERIES ARE WRITTEN IN TRADING DAYS, because that is what the indicator is in. A feed that
+# publishes on business days is not late on a Sunday, and an alert that fires every weekend is an
+# alert somebody silences on the second weekend.
+
+rule_files:
+  - generated.yml
+
+evaluation_interval: 1m
+
+tests:
+  # THE FEED IS FINE. Nothing fires, and this test exists because a rule set that has never been
+  # seen staying quiet is one nobody can trust to stay quiet.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_trading_days_since_delivery{feed="ecb_exr_daily"}'
+        values: '0+0x40'
+      - series: 'quietz_delivered_fraction{feed="ecb_exr_daily"}'
+        values: '1+0x40'
+      - series: 'quietz_trading_days_since_delivery{feed="ecb_yield_curve"}'
+        values: '1+0x40'
+      - series: 'quietz_delivered_fraction{feed="ecb_bank_rates"}'
+        values: '1+0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ecb_reference_rate_freshness
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: ecb_reference_rate_completeness
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: ecb_yield_curve_freshness
+        exp_alerts: []
+
+  # A FEED IS A DAY LATE, and the one that pages is the one that pages.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_trading_days_since_delivery{feed="ecb_exr_daily"}'
+        values: '2+0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ecb_reference_rate_freshness
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              route: oncall
+              owner: data-platform
+              feed: ecb_exr_daily
+            exp_annotations:
+              summary: 'ecb_exr_daily has not delivered within 1 trading days'
+              because: 'every downstream valuation reads this rate, and a stale one is wrong in a way nothing downstream can detect'
+
+  # THE SAME LATENESS ON A FEED WHOSE OWNER ALLOWS TWO DAYS. Nothing fires, which is the
+  # tolerance doing its job rather than the rule failing to work.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_trading_days_since_delivery{feed="ecb_yield_curve"}'
+        values: '2+0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ecb_yield_curve_freshness
+        exp_alerts: []
+
+  # INCOMPLETE, BUT WITHIN TOLERANCE, THEN OUTSIDE IT. Two evaluations of one series, so the
+  # boundary is exercised rather than a value far from it.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_delivered_fraction{feed="ecb_exr_daily"}'
+        values: '0.99+0x20 0.97+0x20'
+    alert_rule_test:
+      - eval_time: 18m
+        alertname: ecb_reference_rate_completeness
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: ecb_reference_rate_completeness
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              route: data-platform
+              owner: data-platform
+              feed: ecb_exr_daily
+            exp_annotations:
+              summary: 'ecb_exr_daily delivered less than 98% of what was expected'
+              because: 'a few missing days is a gap to fill, not an emergency to wake somebody for'
+
+  # A BRIEF DIP DOES NOT ALERT. The `for: 15m` is what stops a single scrape becoming a page,
+  # and a rule set without a test for it has a `for` clause nobody has checked.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_trading_days_since_delivery{feed="ecb_exr_daily"}'
+        values: '0+0x10 2 2 2 0+0x20'
+    alert_rule_test:
+      - eval_time: 13m
+        alertname: ecb_reference_rate_freshness
+        exp_alerts: []

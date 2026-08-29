@@ -1,0 +1,66 @@
+# GENERATED FROM src/quietz/monitors.py. Do not edit.
+#
+# A hand-edited copy drifts from the registry the first time somebody changes one and
+# not the other, and the drift is invisible because both files look fine alone. The
+# test suite regenerates this and fails if it differs from what is committed.
+groups:
+  - name: quietz_ratios
+    rules:
+      - record: feed:delivered_fraction:ratio
+        expr: quietz_delivered_fraction{feed="ecb_bank_rates"}
+        labels:
+          feed: "ecb_bank_rates"
+      - record: feed:delivered_fraction:ratio
+        expr: quietz_delivered_fraction{feed="ecb_exr_daily"}
+        labels:
+          feed: "ecb_exr_daily"
+      - record: feed:delivered_fraction:ratio
+        expr: quietz_delivered_fraction{feed="ecb_yield_curve"}
+        labels:
+          feed: "ecb_yield_curve"
+  - name: quietz_monitors
+    rules:
+    - alert: ecb_reference_rate_freshness
+      expr: quietz_trading_days_since_delivery{feed="ecb_exr_daily"} > 1
+      for: 15m
+      labels:
+        severity: page
+        route: oncall
+        owner: data-platform
+        feed: ecb_exr_daily
+      annotations:
+        summary: "ecb_exr_daily has not delivered within 1 trading days"
+        because: "every downstream valuation reads this rate, and a stale one is wrong in a way nothing downstream can detect"
+    - alert: ecb_reference_rate_completeness
+      expr: quietz_delivered_fraction{feed="ecb_exr_daily"} < 0.98
+      for: 15m
+      labels:
+        severity: ticket
+        route: data-platform
+        owner: data-platform
+        feed: ecb_exr_daily
+      annotations:
+        summary: "ecb_exr_daily delivered less than 98% of what was expected"
+        because: "a few missing days is a gap to fill, not an emergency to wake somebody for"
+    - alert: ecb_yield_curve_freshness
+      expr: quietz_trading_days_since_delivery{feed="ecb_yield_curve"} > 2
+      for: 15m
+      labels:
+        severity: ticket
+        route: data-platform
+        owner: research
+        feed: ecb_yield_curve
+      annotations:
+        summary: "ecb_yield_curve has not delivered within 2 trading days"
+        because: "research reruns overnight, so a day late is noticed and a day late is not urgent"
+    - alert: ecb_bank_rates_completeness
+      expr: quietz_delivered_fraction{feed="ecb_bank_rates"} < 0.9
+      for: 15m
+      labels:
+        severity: log
+        route: none
+        owner: research
+        feed: ecb_bank_rates
+      annotations:
+        summary: "ecb_bank_rates delivered less than 90% of what was expected"
+        because: "this feed is genuinely irregular and nobody should be told about it, but a silent monitor is still better than an undeclared one"
