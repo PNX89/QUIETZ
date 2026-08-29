@@ -1,0 +1,27 @@
+4 monitors, and every one of them is a row somebody has to review.
+
+  monitor                           owner           within   complete  goes to
+  ecb_reference_rate_freshness      data-platform   1d       100%      oncall
+  ecb_reference_rate_completeness   data-platform   2d       98%       data-platform
+  ecb_yield_curve_freshness         research        2d       95%       data-platform
+  ecb_bank_rates_completeness       research        3d       90%       none
+
+  Only one of them wakes anybody, and the registry refuses to let that change by
+  accident: a monitor that pages on a window longer than two trading days is rejected
+  in the constructor, because waking somebody for a feed allowed to be three days late
+  is how a rota learns to ignore the pager.
+
+The windows are in TRADING days. From Friday 2026-08-28 to Monday 2026-08-31 is
+  1 trading day, not 3, so a feed that publishes on business days is not late on a
+  Sunday and nobody is woken for a weekend.
+
+And when two of these feeds break and keep breaking:
+
+  24 alert firings
+  2 notifications a human receives
+    oncall           1
+    ticket           1
+
+  The completeness alerts are absent on purpose. A feed that has not delivered at all
+  cannot be incomplete in any interesting way, so it is suppressed while the freshness
+  alert is firing: the same problem, restated.
