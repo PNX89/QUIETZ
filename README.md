@@ -8,6 +8,9 @@ and a tolerance, and generates the alert rules from it.**
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+![A real run: four monitors with their owners and tolerances, one of which wakes anybody, and an
+incident where 24 alert firings become 2 notifications.](docs/demo.svg)
+
 <!-- quoted from docs/evidence/demo.txt -->
 ```text
   monitor                           owner           within   complete  goes to
@@ -129,6 +132,47 @@ uv run mypy .
 ```
 
 <!-- toolset:start -->
+
+Part of the Q...Z toolset, all of it designing for the failure that does not announce itself:
+
+- [QUACKZ](https://github.com/PNX89/QUACKZ), deflating a backtest that only looks good because
+  it was picked out of two hundred.
+- [QUOTEZ](https://github.com/PNX89/QUOTEZ), market data an agent can read and cannot act on.
+- [QUELLZ](https://github.com/PNX89/QUELLZ), measuring what prompt-injection containment costs
+  in utility as well as in attack rate.
+- [QUIDZ](https://github.com/PNX89/QUIDZ), refusing the outbound payment that would have gone
+  out twice.
+- [QUESTZ](https://github.com/PNX89/QUESTZ), stopping a scraper before it writes a CSV from a
+  page that changed shape.
+- [QUIZZ](https://github.com/PNX89/QUIZZ), answering what a statistic said at the time, and
+  refusing when it cannot.
+- [QUARANTINEZ](https://github.com/PNX89/QUARANTINEZ), treating an outcome the venue never
+  confirmed as terminal rather than as a retry.
+- [QUENCHZ](https://github.com/PNX89/QUENCHZ), deciding in the open what a tool server gets free
+  while it is still somebody's subprocess.
+- [QUILTZ](https://github.com/PNX89/QUILTZ), proving infrastructure code wrong without a cloud
+  account, and saying what that cannot show.
+- [QUAYZ](https://github.com/PNX89/QUAYZ), telling a crash loop from an OOMKill, and naming the
+  failure that no single field finds.
+- [QUARRYZ](https://github.com/PNX89/QUARRYZ), keeping every version a statistical office
+  published, and failing the build when it quietly issues another.
+- [QUASHZ](https://github.com/PNX89/QUASHZ), refusing a row whose outcome had not been decided
+  yet when the decision would have been made.
+- [QUALMZ](https://github.com/PNX89/QUALMZ), a fixed number of looks at the holdout, where
+  re-running the same configuration does not buy another.
+- [QUEUEZ](https://github.com/PNX89/QUEUEZ), ordering a feed by its sequence, because on a real
+  recorded session the clock goes backwards.
+- [QUANDARYZ](https://github.com/PNX89/QUANDARYZ), counting the distinct screens a component can
+  settle into when its responses arrive out of order.
+- QUIETZ, this one: watching whether the data arrived rather than whether the server answered.
+
+**On QUARRYZ.** QUARRYZ fails a build when a publisher rewrites history, which is the right
+answer when the thing being stopped is a load into a warehouse. This repository watches the same
+kind of feed and reaches the opposite conclusion about failure, on purpose: a notification path
+that fails closed suppresses, and a monitoring system that goes quiet when it is confused is
+most silent exactly when something is most wrong. Both are about a feed nobody is watching
+closely, and the direction of the safe default is decided by what the failure costs.
+
 <!-- toolset:end -->
 
 ## Licence

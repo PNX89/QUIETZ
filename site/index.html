@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QUIETZ</title>
+<meta name="description" content="watching whether the data arrived rather than whether the server answered">
+<style>
+  /* Light is defined on bare :root so a viewer with no preference gets a complete palette,
+     and only the tokens that differ are redefined for dark. */
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfbfa; --fg: #1a1a18; --muted: #55554e; --rule: #dedcd4;
+    --term-bg: #f4f3ee; --term-fg: #23231f; --accent: #7a4b12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a; --fg: #e9e8e3; --muted: #a2a19a; --rule: #2e2e34;
+      --term-bg: #101014; --term-fg: #dcdbd4; --accent: #d9a441;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 3rem 1.25rem 5rem;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 2.25rem; letter-spacing: -0.02em; margin: 0 0 .35rem; }
+  .blurb { color: var(--muted); margin: 0 0 2rem; font-size: 1.05rem; }
+  .claim { font-size: 1.2rem; line-height: 1.5; margin: 0 0 2rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+  .facts { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 1rem 0; margin: 0 0 2rem;
+           border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .facts div { font-size: .9rem; }
+  .facts dt { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; }
+  .facts dd { margin: .15rem 0 0; font-variant-numeric: tabular-nums; }
+  h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted);
+       margin: 2.5rem 0 .5rem; font-weight: 600; }
+  .cmd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem;
+         color: var(--muted); margin: 0 0 .5rem; }
+  /* Wide output scrolls inside its own box. The page body never scrolls sideways. */
+  pre { background: var(--term-bg); color: var(--term-fg); padding: 1.25rem; border-radius: 6px;
+        overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .8rem; line-height: 1.5; margin: 0; }
+  .note { color: var(--muted); font-size: .82rem; margin: .6rem 0 0; }
+  ul { list-style: none; padding: 0; margin: .5rem 0 0; }
+  li { padding: .35rem 0; border-bottom: 1px solid var(--rule); }
+  li span { color: var(--muted); font-size: .88rem; }
+  a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  a:hover { color: var(--accent); }
+  footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule);
+           color: var(--muted); font-size: .82rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>QUIETZ</h1>
+  <p class="blurb">watching whether the data arrived rather than whether the server answered.</p>
+
+  <p class="claim">A feed that returns 200 and yesterday's numbers is healthy by every status check ever written, so this watches freshness and completeness instead. Every monitor is a row with an owner, a tolerance and a route, the Prometheus rules are generated from it, and the rules are unit tested in both directions: an alert fires when it should, and stays silent on a healthy feed, which is the half that decides whether anybody keeps reading. One replayed incident turns 24 alert firings into 2 notifications, measured against a real Alertmanager rather than reasoned about from the configuration.</p>
+
+  <dl class="facts">
+    <div><dt>Tests</dt><dd>41</dd></div>
+    <div><dt>Python</dt><dd>3.11 to 3.13</dd></div>
+    <div><dt>Release</dt><dd>v0.1.0</dd></div>
+    <div><dt>Licence</dt><dd>MIT</dd></div>
+  </dl>
+
+  <h2>The demo, as it really ran</h2>
+  <p class="cmd">$ uv run python examples/what_gets_you_woken.py</p>
+  <pre>4 monitors, and every one of them is a row somebody has to review.
+
+  monitor                           owner           within   complete  goes to
+  ecb_reference_rate_freshness      data-platform   1d       100%      oncall
+  ecb_reference_rate_completeness   data-platform   2d       98%       data-platform
+  ecb_yield_curve_freshness         research        2d       95%       data-platform
+  ecb_bank_rates_completeness       research        3d       90%       none
+
+  Only one of them wakes anybody, and the registry refuses to let that change by
+  accident: a monitor that pages on a window longer than two trading days is rejected
+  in the constructor, because waking somebody for a feed allowed to be three days late
+  is how a rota learns to ignore the pager.
+
+The windows are in TRADING days. From Friday 2026-08-28 to Monday 2026-08-31 is
+  1 trading day, not 3, so a feed that publishes on business days is not late on a
+  Sunday and nobody is woken for a weekend.
+
+And when two of these feeds break and keep breaking:
+
+  24 alert firings
+  2 notifications a human receives
+    oncall           1
+    ticket           1
+
+  The completeness alerts are absent on purpose. A feed that has not delivered at all
+  cannot be incomplete in any interesting way, so it is suppressed while the freshness
+  alert is firing: the same problem, restated.</pre>
+  <p class="note">Output captured on 2026-08-29. It is committed to the repository and a test fails when it
+    stops matching a live run, so this page cannot quietly drift from the code it describes.</p>
+
+  <h2>Read it</h2>
+  <ul>
+    <li><a href="https://github.com/PNX89/QUIETZ">Source on GitHub</a> <span>the README carries the argument in full</span></li>
+    <li><a href="https://github.com/PNX89/QUIETZ/releases/tag/v0.1.0">Release v0.1.0</a> <span>changelog and tag</span></li>
+  </ul>
+
+  <h2>The rest of the toolset</h2>
+  <ul>
+      <li><a href="https://pnx89.github.io/QUACKZ/">QUACKZ</a> <span>deflating a backtest that only looks good because it was picked out of two hundred</span></li>
+      <li><a href="https://pnx89.github.io/QUOTEZ/">QUOTEZ</a> <span>market data an agent can read and cannot act on</span></li>
+      <li><a href="https://pnx89.github.io/QUELLZ/">QUELLZ</a> <span>measuring what prompt-injection containment costs in utility as well as in attack rate</span></li>
+      <li><a href="https://pnx89.github.io/QUIDZ/">QUIDZ</a> <span>refusing the outbound payment that would have gone out twice</span></li>
+      <li><a href="https://pnx89.github.io/QUESTZ/">QUESTZ</a> <span>stopping a scraper before it writes a CSV from a page that changed shape</span></li>
+      <li><a href="https://pnx89.github.io/QUIZZ/">QUIZZ</a> <span>answering what a statistic said at the time, and refusing when it cannot</span></li>
+      <li><a href="https://pnx89.github.io/QUARANTINEZ/">QUARANTINEZ</a> <span>treating an outcome the venue never confirmed as terminal rather than as a retry</span></li>
+      <li><a href="https://pnx89.github.io/QUENCHZ/">QUENCHZ</a> <span>deciding in the open what a tool server gets free while it is still somebody's subprocess</span></li>
+      <li><a href="https://pnx89.github.io/QUILTZ/">QUILTZ</a> <span>proving infrastructure code wrong without a cloud account, and saying what that cannot show</span></li>
+      <li><a href="https://pnx89.github.io/QUAYZ/">QUAYZ</a> <span>telling a crash loop from an OOMKill, and naming the failure that no single field finds</span></li>
+      <li><a href="https://pnx89.github.io/QUARRYZ/">QUARRYZ</a> <span>keeping every version a statistical office published, and failing the build when it quietly issues another</span></li>
+      <li><a href="https://pnx89.github.io/QUASHZ/">QUASHZ</a> <span>refusing a row whose outcome had not been decided yet when the decision would have been made</span></li>
+      <li><a href="https://pnx89.github.io/QUALMZ/">QUALMZ</a> <span>a fixed number of looks at the holdout, where re-running the same configuration does not buy another</span></li>
+      <li><a href="https://pnx89.github.io/QUEUEZ/">QUEUEZ</a> <span>ordering a feed by its sequence, because on a real recorded session the clock goes backwards</span></li>
+      <li><a href="https://pnx89.github.io/QUANDARYZ/">QUANDARYZ</a> <span>counting the distinct screens a component can settle into when its responses arrive out of order</span></li>
+  </ul>
+
+  <footer>Quelin Zammit. Built for the failure that does not announce itself.</footer>
+</main>
+</body>
+</html>
