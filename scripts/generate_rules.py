@@ -33,8 +33,11 @@ def freshness_rule(monitor: Monitor) -> str:
     # The indicator: how long since this feed last delivered, against the window its owner
     # declared, both in trading days. `quietz_trading_days_since_delivery` is produced by the
     # ingest, because a metric about trading days cannot be computed from a wall clock alone.
+    metric = f'quietz_trading_days_since_delivery{{feed="{monitor.feed}"}}'
+    window = monitor.expected_within_trading_days
+    summary = f"{monitor.feed} has not delivered within {window} trading days"
     return f"""  - alert: {monitor.name}
-    expr: quietz_trading_days_since_delivery{{feed="{monitor.feed}"}} > {monitor.expected_within_trading_days}
+    expr: {metric} > {window}
     for: 15m
     labels:
       severity: {monitor.severity}
@@ -42,7 +45,7 @@ def freshness_rule(monitor: Monitor) -> str:
       owner: {monitor.owner}
       feed: {monitor.feed}
     annotations:
-      summary: "{monitor.feed} has not delivered within {monitor.expected_within_trading_days} trading days"
+      summary: "{summary}"
       because: "{monitor.because}"
 """
 
