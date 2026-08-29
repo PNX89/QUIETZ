@@ -1,0 +1,17 @@
+{
+  "alert_firings_posted": 24,
+  "notifications_delivered": 2,
+  "notifications_by_route": {
+    "oncall": 1,
+    "ticket": 1
+  },
+  "distinct_alerts_reaching_a_human": [
+    "ecb_exr_daily_freshness",
+    "ecb_yield_curve_freshness"
+  ],
+  "feeds": [
+    "ecb_exr_daily",
+    "ecb_yield_curve"
+  ],
+  "evaluations": 6
+}
