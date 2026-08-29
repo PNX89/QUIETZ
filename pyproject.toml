@@ -28,5 +28,5 @@ addopts = "-q"
 filterwarnings = ["error"]
 
 [tool.mypy]
-files = ["src", "tests", "scripts"]
+files = ["src", "tests", "scripts", "examples"]
 strict = true
