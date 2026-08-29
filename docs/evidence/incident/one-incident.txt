@@ -1,0 +1,16 @@
+$ uv run python scripts/measure_incident.py
+
+Two feeds break and keep breaking. 6 evaluations, two alerts each,
+24 alert firings in total.
+
+  notifications a human receives   2
+    oncall           1
+    ticket           1
+
+  distinct alerts that reached anybody:
+    ecb_exr_daily_freshness
+    ecb_yield_curve_freshness
+
+The completeness alert for ecb_exr_daily is missing from that list on purpose. A feed
+that has not delivered at all cannot be incomplete in any interesting way, so it is
+suppressed while the freshness alert is firing: the same problem, restated.

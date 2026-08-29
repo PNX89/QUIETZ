@@ -1,0 +1,64 @@
+# The notification path, and the one decision in it that runs against the grain.
+#
+# FAILING OPEN, ON PURPOSE. Every other repository in this toolset fails CLOSED: when a check
+# cannot run, the safe answer is to refuse. That is right when the thing being refused is a
+# promotion, a payment or an admission, because the cost of wrongly proceeding is unbounded and
+# the cost of wrongly stopping is a delay.
+#
+# It is wrong here, and the reason is worth stating rather than assuming. If the notification
+# path cannot decide whether an alert should be suppressed, failing closed means suppressing it,
+# and a monitoring system that goes quiet when it is confused is a monitoring system that is
+# most silent exactly when something is most wrong. So every rule below is written so that
+# uncertainty produces a notification rather than removes one: the grouping wait is short, the
+# inhibition rules match on a label that must be PRESENT rather than absent, and there is no
+# catch-all silence.
+#
+# The cost is paid in noise, and the incident replay measures exactly how much.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: log
+  # Group by the feed, because a burst about one feed is one problem. Grouping by alertname
+  # instead would put a freshness alert and a completeness alert about the same broken feed in
+  # different notifications, which is two pages for one incident.
+  group_by: ['feed']
+  group_wait: 30s
+  group_interval: 5m
+  # A LONG REPEAT INTERVAL IS NOT A SILENCE. Four hours is long enough that an unfixed problem
+  # does not page hourly, and short enough that one lost notification is not the end of it.
+  repeat_interval: 4h
+  routes:
+    - matchers: ['route="oncall"']
+      receiver: oncall
+      group_wait: 10s
+    - matchers: ['route="data-platform"']
+      receiver: ticket
+    - matchers: ['route="none"']
+      receiver: log
+
+inhibit_rules:
+  # A feed that has not delivered at all cannot be incomplete in any interesting way, so the
+  # completeness alert about the SAME feed is suppressed while the freshness alert is firing.
+  #
+  # THE EQUALITY IS ON `feed` AND THE MATCHERS REQUIRE A LABEL TO BE PRESENT. An inhibition rule
+  # that matched on an absent label would suppress alerts it was never meant to reach, which is
+  # the fail-closed failure in miniature.
+  - source_matchers: ['alertname=~".*_freshness"']
+    target_matchers: ['alertname=~".*_completeness"']
+    equal: ['feed']
+
+receivers:
+  - name: log
+    webhook_configs:
+      - url: 'http://receiver:9099/log'
+        send_resolved: true
+  - name: oncall
+    webhook_configs:
+      - url: 'http://receiver:9099/oncall'
+        send_resolved: true
+  - name: ticket
+    webhook_configs:
+      - url: 'http://receiver:9099/ticket'
+        send_resolved: true

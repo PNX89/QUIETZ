@@ -49,3 +49,26 @@ jobs:
             --entrypoint promtool prom/prometheus:v3.7.3 check rules generated.yml
           docker run --rm -v "$PWD/rules":/rules -w /rules \
             --entrypoint promtool prom/prometheus:v3.7.3 test rules generated_test.yml
+
+  # One incident, replayed through a real Alertmanager, with the notifications counted at a
+  # receiver rather than reasoned about from the configuration. Deduplication, grouping and
+  # inhibition interact, and the interaction is where the surprises are.
+  incident:
+    name: one incident, and what a human is actually told
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+      - name: check the notification configuration
+        run: |
+          docker run --rm -v "$PWD/alertmanager":/am --entrypoint amtool \
+            prom/alertmanager:v0.29.0 check-config /am/alertmanager.yml
+      - name: replay the incident and count what arrived
+        run: scripts/incident_stack.sh
+      - name: fail if any measured outcome or transcript has changed
+        run: |
+          git status --porcelain docs/evidence/incident
+          git diff --exit-code -- docs/evidence/incident
+          test -z "$(git status --porcelain docs/evidence/incident)"
