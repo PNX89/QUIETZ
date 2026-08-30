@@ -23,6 +23,12 @@ route:
   # Group by the feed, because a burst about one feed is one problem. Grouping by alertname
   # instead would put a freshness alert and a completeness alert about the same broken feed in
   # different notifications, which is two pages for one incident.
+  #
+  # THE REPLAY DOES NOT EXERCISE IT, and that is measured rather than assumed. Inhibition
+  # removes the completeness alert before grouping sees it, and the alerts that survive route to
+  # different receivers, so no notification carries more than one and this setting changes
+  # nothing about the number a human gets. The reasoning above is why the setting is right, not
+  # evidence that it did any of the work.
   group_by: ['feed']
   group_wait: 30s
   group_interval: 5m

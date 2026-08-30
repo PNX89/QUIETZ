@@ -5,6 +5,12 @@
 # fires when it should NOT, which is the half that decides whether anybody keeps reading the
 # alerts. Both directions are exercised here for every monitor.
 #
+# THAT LAST SENTENCE USED TO BE UNCHECKED, and it was false: one of the four monitors was named
+# by no assertion at all and another had never been observed firing. promtool cannot notice,
+# because it only checks the alertnames a test happens to name, and an empty test list is a
+# SUCCESS. tests/test_rules.py joins this file to the registry instead, and fails when a monitor
+# is missing from either direction. Adding a monitor without adding both cases below is red.
+#
 # THE SERIES ARE WRITTEN IN TRADING DAYS, because that is what the indicator is in. A feed that
 # publishes on business days is not late on a Sunday, and an alert that fires every weekend is an
 # alert somebody silences on the second weekend.
@@ -37,6 +43,9 @@ tests:
       - eval_time: 30m
         alertname: ecb_yield_curve_freshness
         exp_alerts: []
+      - eval_time: 30m
+        alertname: ecb_bank_rates_completeness
+        exp_alerts: []
 
   # A FEED IS A DAY LATE, and the one that pages is the one that pages.
   - interval: 1m
@@ -66,6 +75,45 @@ tests:
       - eval_time: 30m
         alertname: ecb_yield_curve_freshness
         exp_alerts: []
+
+  # ONE DAY PAST THAT TOLERANCE, and now it does fire. The pair above and below is the point:
+  # a rule only observed staying quiet is one that might be quiet for the wrong reason.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_trading_days_since_delivery{feed="ecb_yield_curve"}'
+        values: '3+0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ecb_yield_curve_freshness
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              route: data-platform
+              owner: research
+              feed: ecb_yield_curve
+            exp_annotations:
+              summary: 'ecb_yield_curve has not delivered within 2 trading days'
+              because: 'research reruns overnight, so a day late is noticed and a day late is not urgent'
+
+  # THE MONITOR NOBODY IS TOLD ABOUT STILL HAS TO WORK. Its severity routes nowhere a human
+  # reads, which is a reason to declare it rather than a reason to leave it untested: an
+  # undeclared monitor is the thing this registry exists to prevent.
+  - interval: 1m
+    input_series:
+      - series: 'quietz_delivered_fraction{feed="ecb_bank_rates"}'
+        values: '0.85+0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ecb_bank_rates_completeness
+        exp_alerts:
+          - exp_labels:
+              severity: log
+              route: none
+              owner: research
+              feed: ecb_bank_rates
+            exp_annotations:
+              summary: 'ecb_bank_rates delivered less than 90% of what was expected'
+              because: 'this feed is genuinely irregular and nobody should be told about it, but a silent monitor is still better than an undeclared one'
 
   # INCOMPLETE, BUT WITHIN TOLERANCE, THEN OUTSIDE IT. Two evaluations of one series, so the
   # boundary is exercised rather than a value far from it.

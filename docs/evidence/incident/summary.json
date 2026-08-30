@@ -5,13 +5,26 @@
     "oncall": 1,
     "ticket": 1
   },
-  "distinct_alerts_reaching_a_human": [
-    "ecb_exr_daily_freshness",
+  "distinct_alerts_posted": [
+    "ecb_reference_rate_completeness",
+    "ecb_reference_rate_freshness",
     "ecb_yield_curve_freshness"
   ],
+  "distinct_alerts_reaching_a_human": [
+    "ecb_reference_rate_freshness",
+    "ecb_yield_curve_freshness"
+  ],
+  "alerts_suppressed_by_inhibition": [
+    "ecb_reference_rate_completeness"
+  ],
+  "route_labels_reaching_a_human": [
+    "data-platform",
+    "oncall"
+  ],
+  "max_alerts_in_one_notification": 1,
   "feeds": [
     "ecb_exr_daily",
     "ecb_yield_curve"
   ],
-  "evaluations": 6
+  "evaluations": 8
 }
