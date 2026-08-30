@@ -14,9 +14,9 @@ incident where 24 alert firings become 2 notifications.](docs/demo.svg)
 <!-- quoted from docs/evidence/demo.txt -->
 ```text
   monitor                           owner           within   complete  goes to
-  ecb_reference_rate_freshness      data-platform   1d       100%      oncall
+  ecb_reference_rate_freshness      data-platform   1d       -         oncall
   ecb_reference_rate_completeness   data-platform   2d       98%       data-platform
-  ecb_yield_curve_freshness         research        2d       95%       data-platform
+  ecb_yield_curve_freshness         research        2d       -         data-platform
   ecb_bank_rates_completeness       research        3d       90%       none
 ```
 
@@ -24,6 +24,10 @@ That is the whole registry, and it is the whole monitoring: the Prometheus rules
 from it, so adding a monitor is a pull request against data rather than another alert expression
 nobody reviews. Six months later somebody can still say what is watched, by whom, and what would
 have to be true for an alert to be wrong.
+
+A dash under `complete` is a monitor whose rule never reads a tolerance. The registry refuses to
+let one be declared there, rather than printing a figure nothing enforces: two of these four
+rows used to show a percentage that generated nothing and could never fire.
 
 One file to start with: [`src/quietz/monitors.py`](src/quietz/monitors.py).
 
@@ -54,6 +58,11 @@ that decides whether anybody keeps reading the alerts. So the generated rules ar
 That last one matters most. A rule set nobody has watched staying quiet is one nobody can trust
 to stay quiet.
 
+Every monitor is exercised in both directions, and that sentence is checked rather than asserted:
+a test joins the registry to the unit tests and fails when a monitor is missing from either
+side. It had to be written, because `promtool test rules` reports success on an empty test file
+and only ever checks the alert names a test happens to name.
+
 The committed rules are regenerated in CI and compared, so the registry and the alerts cannot
 drift apart. Both files look fine on their own, which is exactly why that check exists.
 
@@ -65,19 +74,25 @@ drift apart. Both files look fine on their own, which is exactly why that check 
   2 notifications a human receives
 ```
 
-Two feeds break and keep breaking. Three different mechanisms produce that gap and they are not
-interchangeable:
+Two feeds break and keep breaking. Three mechanisms could produce that gap, and the reason for
+measuring rather than reasoning is that only two of them did:
 
-| | what it does |
+| | what it did in this replay |
 |---|---|
-| deduplication | the same alert firing again is not a second notification |
-| grouping | everything about one feed arrives as one notification, grouped by feed rather than by alert name |
-| inhibition | the completeness alert for a feed that has not delivered **at all** is suppressed |
+| deduplication | 8 firings of the same alert became 1 notification |
+| grouping | nothing: no notification carried more than 1 alert |
+| inhibition | the completeness alert for a feed that has not delivered **at all** was suppressed |
 
-The third is the one deduplication could never have caught: it is a different alert with a
-different name, and it is the same problem restated. Grouping by alert name instead of by feed
-would have put a freshness alert and a completeness alert about one broken feed into two
-notifications, which is two pages for one incident.
+Inhibition is the one deduplication could never have caught: it is a different alert with a
+different name, and it is the same problem restated.
+
+Grouping is the interesting row, because the reasoning for it is sound and it still did nothing
+here. Grouping by feed rather than by alert name is the right setting: two alerts about one
+broken feed arriving separately is two pages for one incident. It contributed nothing to the
+number above, because inhibition removes the completeness alert before grouping ever sees it and
+the two alerts that survive route to different receivers, so no notification could carry two of
+them under any grouping at all. This page claimed the opposite until the replay was read rather
+than described.
 
 All of it is measured against a real Alertmanager with the notifications counted at a receiver,
 rather than reasoned about from the configuration, because the three interact and the

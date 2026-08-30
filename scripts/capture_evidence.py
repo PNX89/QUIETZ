@@ -27,30 +27,30 @@ EVIDENCE = ROOT / "docs" / "evidence"
 
 
 def test_total() -> int:
-    """Collected by pytest across BOTH suites, because the split is an implementation detail.
+    """Collected by pytest, and cross-checked against the test files that exist.
 
-    A total that counted only `tests` would understate the repository by every test that needs
-    a real PostgreSQL, which is where the grant is watched refusing.
+    THE FILE COUNT IS THE POINT. A collection that stopped early still returns a number, and a
+    number is exactly what this function is for, so the total is only trustworthy if the run
+    that produced it saw every file. This used to loop over a tuple of suites and describe a
+    split that does not exist here, which is a docstring somebody carried in from a sibling.
     """
-    total = 0
-    for directory in ("tests",):
-        result = subprocess.run(
-            [sys.executable, "-m", "pytest", "--collect-only", "-q", directory],
-            capture_output=True,
-            text=True,
-            cwd=ROOT,
-            check=True,
+    directory = "tests"
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", directory],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=True,
+    )
+    per_file = re.findall(r"^(\S+): (\d+)$", result.stdout, re.MULTILINE)
+    if not per_file:
+        raise SystemExit(f"pytest collected nothing in {directory}:\n{result.stdout[-400:]}")
+    on_disk = len(list((ROOT / directory).glob("test_*.py")))
+    if len(per_file) != on_disk:
+        raise SystemExit(
+            f"pytest reported {len(per_file)} files in {directory} and {on_disk} exist"
         )
-        per_file = re.findall(r"^(\S+): (\d+)$", result.stdout, re.MULTILINE)
-        if not per_file:
-            raise SystemExit(f"pytest collected nothing in {directory}:\n{result.stdout[-400:]}")
-        on_disk = len(list((ROOT / directory).glob("test_*.py")))
-        if len(per_file) != on_disk:
-            raise SystemExit(
-                f"pytest reported {len(per_file)} files in {directory} and {on_disk} exist"
-            )
-        total += sum(int(count) for _, count in per_file)
-    return total
+    return sum(int(count) for _, count in per_file)
 
 
 def python_range() -> str:

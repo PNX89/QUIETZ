@@ -63,6 +63,33 @@ def test_the_page_says_which_way_this_repository_fails() -> None:
     assert "most silent exactly when something is most wrong" in flattened
 
 
+def test_the_page_says_what_each_mechanism_actually_did() -> None:
+    """THE ROW, NOT THE PAGE. A page this long contains any small integer somewhere, so the
+    figure is read out of the row that carries it.
+
+    The table used to describe what the three mechanisms do in general and present all three as
+    producing the measured gap. Grouping produced none of it: inhibition removes the completeness
+    alert before grouping sees it and the survivors route to different receivers, so the replay
+    could never have carried two alerts in one notification. The counterfactual under the table
+    said the opposite, which is the sentence an interviewer is most likely to probe.
+    """
+    incident = evidence("incident")
+    rows = {
+        "deduplication": {incident["evaluations"], 1},
+        "grouping": {incident["max_alerts_in_one_notification"]},
+    }
+    for label, expected in rows.items():
+        row = next(
+            (line for line in own_prose().splitlines() if line.startswith(f"| {label} |")), None
+        )
+        assert row, f"the page no longer has a row for {label}, so it explains one mechanism less"
+        stated = {int(number) for number in re.findall(r"\b\d+\b", row)}
+        assert stated == expected, (
+            f"the {label} row states {sorted(stated)} and the replay measured {sorted(expected)}: "
+            f"{row}"
+        )
+
+
 def test_no_large_number_on_the_page_is_one_nothing_measured() -> None:
     """A stale copy of a figure elsewhere on the page."""
     incident = evidence("incident")
@@ -129,8 +156,8 @@ def test_every_path_and_link_on_the_page_exists() -> None:
 
 
 #: Phrases this repository must not CLAIM. Some belong to a sibling and some overclaim, and the
-#: check below is about the claim rather than the word: a page saying it is NOT Airflow in
-#: production is doing the right thing, and a blanket ban would fail it for saying so.
+#: check below is about the claim rather than the word: a page saying it is NOT an on-call
+#: rotation is doing the right thing, and a blanket ban would fail it for saying so.
 CLAIMS_TO_AVOID = (
     "in production",
     "at scale",
@@ -159,10 +186,11 @@ def sentences(text: str) -> list[str]:
 def test_the_page_never_claims_what_it_cannot_support(phrase: str) -> None:
     """THE CHECK IS ON THE CLAIM, NOT THE WORD, and the first version was on the word.
 
-    It failed on this repository's own disclaimers: "It is not Airflow in production", "does not
-    allocate capital, hold a track record, or claim any strategy makes money". A ban that fires
-    on the sentence saying no is a ban that pushes the disclaimer off the page, which is the
-    opposite of what it is for.
+    It failed on this repository's own disclaimers, which are the sentences a word-level ban
+    reaches first: the page says it is not an on-call rotation, an escalation policy or a paging
+    provider, and that it does not monitor anything real. A ban that fires on the sentence
+    saying no is a ban that pushes the disclaimer off the page, which is the opposite of what it
+    is for.
 
     So every sentence containing one of these has to contain a negation as well.
     """

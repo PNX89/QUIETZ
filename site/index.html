@@ -88,7 +88,7 @@
   <p class="claim">A feed that returns 200 and yesterday's numbers is healthy by every status check ever written, so this watches freshness and completeness instead. Every monitor is a row with an owner, a tolerance and a route, the Prometheus rules are generated from it, and the rules are unit tested in both directions: an alert fires when it should, and stays silent on a healthy feed, which is the half that decides whether anybody keeps reading. One replayed incident turns 24 alert firings into 2 notifications, measured against a real Alertmanager rather than reasoned about from the configuration.</p>
 
   <dl class="facts">
-    <div><dt>Tests</dt><dd>42</dd></div>
+    <div><dt>Tests</dt><dd>83</dd></div>
     <div><dt>Python</dt><dd>3.11 to 3.13</dd></div>
     <div><dt>Release</dt><dd>v0.1.0</dd></div>
   </dl>
@@ -102,10 +102,13 @@
   <pre tabindex="0" role="region" aria-label="Captured output of uv run python examples/what_gets_you_woken.py">4 monitors, and every one of them is a row somebody has to review.
 
   monitor                           owner           within   complete  goes to
-  ecb_reference_rate_freshness      data-platform   1d       100%      oncall
+  ecb_reference_rate_freshness      data-platform   1d       -         oncall
   ecb_reference_rate_completeness   data-platform   2d       98%       data-platform
-  ecb_yield_curve_freshness         research        2d       95%       data-platform
+  ecb_yield_curve_freshness         research        2d       -         data-platform
   ecb_bank_rates_completeness       research        3d       90%       none
+
+  A dash under complete is a monitor whose rule never reads one: the registry refuses
+  to let a freshness monitor declare a tolerance nothing would enforce.
 
   Only one of them wakes anybody, and the registry refuses to let that change by
   accident: a monitor that pages on a window longer than two trading days is rejected
@@ -123,9 +126,9 @@ And when two of these feeds break and keep breaking:
     oncall           1
     ticket           1
 
-  The completeness alerts are absent on purpose. A feed that has not delivered at all
-  cannot be incomplete in any interesting way, so it is suppressed while the freshness
-  alert is firing: the same problem, restated.</pre>
+  ecb_reference_rate_completeness is absent on purpose. A feed that has not
+  delivered at all cannot be incomplete in any interesting way, so it is suppressed
+  while the freshness alert on the same feed is firing: the same problem, restated.</pre>
   <p class="note">Output captured on 2026-08-30. It is committed to the repository and a test fails when it
     stops matching a live run, so this page cannot quietly drift from the code it describes.</p>
 
