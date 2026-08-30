@@ -7,10 +7,6 @@ the first time somebody edits one and not the other, and the drift is invisible:
 fine on their own. Generating means the registry IS the monitoring, and a review of a pull
 request that adds a monitor is a review of the alert it produces.
 
-THE RATIO IS A RECORDING RULE, evaluated once and reused by every window. Writing the same
-expression into four burn-rate alerts means four chances to edit three of them, and a burn-rate
-alert whose windows disagree about what it is measuring is worse than no alert at all.
-
 EVERY INTERPOLATED FIELD IS QUOTED, and the reason is the quiet half rather than the loud one.
 The loud half is that a quotation mark in a reason, which is ordinary English, produced a file
 that did not parse. The quiet half is that an owner containing a hash was truncated by YAML
@@ -31,10 +27,6 @@ sys.path.insert(0, str(ROOT / "src"))
 from quietz.monitors import REGISTRY, Monitor  # noqa: E402
 
 OUT = ROOT / "rules" / "generated.yml"
-
-#: The burn-rate windows, in trading days, and the factor each one is judged at. Short windows
-#: catch a fast burn and long ones catch a slow leak; both are needed and neither alone is.
-WINDOWS: tuple[tuple[str, int], ...] = (("fast", 1), ("slow", 5))
 
 
 def quoted(text: str) -> str:
@@ -106,18 +98,9 @@ def document(monitors: Sequence[Monitor]) -> tuple[str, int, int]:
         "# not the other, and the drift is invisible because both files look fine alone. The",
         "# test suite regenerates this and fails if it differs from what is committed.",
         "groups:",
-        "  - name: quietz_ratios",
+        "  - name: quietz_monitors",
         "    rules:",
     ]
-    for feed in feeds:
-        # ONE RECORDING RULE PER FEED, reused by every window below. Four copies of an
-        # expression is four chances to edit three of them.
-        lines.append(f"""      - record: feed:delivered_fraction:ratio
-        expr: quietz_delivered_fraction{{feed={quoted(feed)}}}
-        labels:
-          feed: {quoted(feed)}""")
-
-    lines += ["  - name: quietz_monitors", "    rules:"]
     body: list[str] = []
     for monitor in monitors:
         # THE KIND IS A FIELD. This used to ask whether the name contained the word

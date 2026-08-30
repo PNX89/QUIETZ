@@ -4,20 +4,6 @@
 # not the other, and the drift is invisible because both files look fine alone. The
 # test suite regenerates this and fails if it differs from what is committed.
 groups:
-  - name: quietz_ratios
-    rules:
-      - record: feed:delivered_fraction:ratio
-        expr: quietz_delivered_fraction{feed="ecb_bank_rates"}
-        labels:
-          feed: "ecb_bank_rates"
-      - record: feed:delivered_fraction:ratio
-        expr: quietz_delivered_fraction{feed="ecb_exr_daily"}
-        labels:
-          feed: "ecb_exr_daily"
-      - record: feed:delivered_fraction:ratio
-        expr: quietz_delivered_fraction{feed="ecb_yield_curve"}
-        labels:
-          feed: "ecb_yield_curve"
   - name: quietz_monitors
     rules:
     - alert: "ecb_reference_rate_freshness"
