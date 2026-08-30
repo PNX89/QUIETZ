@@ -16,15 +16,32 @@ WHAT A TOLERANCE IS FOR. A monitor with no tolerance fires on the first late min
 that is routinely three minutes late, and gets silenced within a week. The tolerance is
 declared, per monitor, by the person who owns it, and it is in the registry where a reviewer can
 argue with it rather than inside an expression nobody opens.
+
+THE KIND IS A FIELD, NOT A SUBSTRING OF THE NAME. The generator used to decide which rule to
+emit by asking whether the word completeness appeared in the monitor's name. That made the name
+control flow, in a registry whose whole argument is that a monitor's properties are declared
+fields a reviewer can argue with, and it had a consequence nobody would find by reading it: a
+freshness monitor could declare a tolerance that no rule ever read, so a row saying 95% of the
+data must arrive generated nothing and was printed on the front page anyway.
 """
 
 from __future__ import annotations
 
 import datetime
+import re
 from dataclasses import dataclass
 from typing import Literal
 
 Severity = Literal["page", "ticket", "log"]
+
+#: What a monitor watches, and therefore which rule is generated from it. Declared rather than
+#: inferred: a monitor called ecb_completeness_feed_freshness is not ambiguous here.
+Kind = Literal["freshness", "completeness"]
+
+#: A monitor's name and its feed are interpolated into PromQL, where a colon or a space is
+#: syntax rather than a character, so they are identifiers rather than prose. The owner and the
+#: reason ARE prose, and the generator quotes those on the way out instead.
+IDENTIFIER = re.compile(r"[a-z_][a-z0-9_]*")
 
 #: Where each severity goes. Declared once, here, so a monitor cannot invent a route.
 ROUTES: dict[Severity, str] = {
@@ -42,17 +59,41 @@ class Monitor:
     owner: str
     #: The feed this monitor is about, as it appears in the metric.
     feed: str
-    #: How long after a trading day closes the data is expected, in trading days.
+    #: What is watched, which is what decides the rule. See Kind above.
+    kind: Kind
+    #: How long after a trading day closes the data is expected, in trading days. Read by every
+    #: monitor: it is the freshness threshold, and on any monitor it decides whether a page is
+    #: allowed at all.
     expected_within_trading_days: int
-    #: How much of the expected data must arrive for the feed to count as complete.
-    completeness: float
     severity: Severity
     #: Why this monitor exists, in one sentence, from the person who added it.
     because: str
+    #: How much of the expected data must arrive for the feed to count as complete. Only a
+    #: completeness monitor has one, because only a completeness rule reads it, and a field that
+    #: nothing reads is a tolerance a reviewer would argue with for nothing.
+    completeness: float | None = None
 
     def __post_init__(self) -> None:
-        if not 0 < self.completeness <= 1:
-            raise ValueError(f"{self.name}: completeness is a fraction, got {self.completeness}")
+        for field, value in (("name", self.name), ("feed", self.feed)):
+            if not IDENTIFIER.fullmatch(value):
+                raise ValueError(
+                    f"{self.name}: {field} lands in a PromQL selector, so it has to be an "
+                    f"identifier rather than prose, got {value!r}"
+                )
+        if self.kind == "completeness":
+            if self.completeness is None:
+                raise ValueError(
+                    f"{self.name}: a completeness monitor with no tolerance measures nothing"
+                )
+            if not 0 < self.completeness <= 1:
+                raise ValueError(
+                    f"{self.name}: completeness is a fraction, got {self.completeness}"
+                )
+        elif self.completeness is not None:
+            raise ValueError(
+                f"{self.name}: a freshness rule never reads completeness, so declaring "
+                f"{self.completeness} here is a tolerance nothing enforces"
+            )
         if self.expected_within_trading_days < 1:
             raise ValueError(f"{self.name}: a window shorter than a trading day is not a window")
         if not self.because.strip():
@@ -78,8 +119,8 @@ REGISTRY: tuple[Monitor, ...] = (
         name="ecb_reference_rate_freshness",
         owner="data-platform",
         feed="ecb_exr_daily",
+        kind="freshness",
         expected_within_trading_days=1,
-        completeness=1.0,
         severity="page",
         because=(
             "every downstream valuation reads this rate, and a stale one is wrong in a way "
@@ -90,17 +131,18 @@ REGISTRY: tuple[Monitor, ...] = (
         name="ecb_reference_rate_completeness",
         owner="data-platform",
         feed="ecb_exr_daily",
+        kind="completeness",
         expected_within_trading_days=2,
-        completeness=0.98,
         severity="ticket",
         because="a few missing days is a gap to fill, not an emergency to wake somebody for",
+        completeness=0.98,
     ),
     Monitor(
         name="ecb_yield_curve_freshness",
         owner="research",
         feed="ecb_yield_curve",
+        kind="freshness",
         expected_within_trading_days=2,
-        completeness=0.95,
         severity="ticket",
         because="research reruns overnight, so a day late is noticed and a day late is not urgent",
     ),
@@ -108,13 +150,14 @@ REGISTRY: tuple[Monitor, ...] = (
         name="ecb_bank_rates_completeness",
         owner="research",
         feed="ecb_bank_rates",
+        kind="completeness",
         expected_within_trading_days=3,
-        completeness=0.9,
         severity="log",
         because=(
             "this feed is genuinely irregular and nobody should be told about it, but a silent "
             "monitor is still better than an undeclared one"
         ),
+        completeness=0.9,
     ),
 )
 

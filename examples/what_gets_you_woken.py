@@ -32,11 +32,18 @@ def main() -> None:
     say()
     say(f"  {'monitor':<34}{'owner':<16}{'within':<9}{'complete':<10}goes to")
     for monitor in REGISTRY:
+        # A DASH RATHER THAN A NUMBER where no rule reads one. A freshness rule watches the
+        # clock, so a tolerance on one of those is a figure nothing enforces, and two of the
+        # four rows here used to print one as though it meant something.
+        tolerance = "-" if monitor.completeness is None else f"{monitor.completeness:.0%}"
         say(
             f"  {monitor.name:<34}{monitor.owner:<16}"
             f"{str(monitor.expected_within_trading_days) + 'd':<9}"
-            f"{monitor.completeness:<10.0%}{monitor.route}"
+            f"{tolerance:<10}{monitor.route}"
         )
+    say()
+    say("  A dash under complete is a monitor whose rule never reads one: the registry refuses")
+    say("  to let a freshness monitor declare a tolerance nothing would enforce.")
     say()
     say("  Only one of them wakes anybody, and the registry refuses to let that change by")
     say("  accident: a monitor that pages on a window longer than two trading days is rejected")
@@ -62,9 +69,10 @@ def main() -> None:
     for route, count in sorted(incident["notifications_by_route"].items()):
         say(f"    {route:<16} {count}")
     say()
-    say("  The completeness alerts are absent on purpose. A feed that has not delivered at all")
-    say("  cannot be incomplete in any interesting way, so it is suppressed while the freshness")
-    say("  alert is firing: the same problem, restated.")
+    for name in incident["alerts_suppressed_by_inhibition"]:
+        say(f"  {name} is absent on purpose. A feed that has not")
+        say("  delivered at all cannot be incomplete in any interesting way, so it is suppressed")
+        say("  while the freshness alert on the same feed is firing: the same problem, restated.")
 
     (ROOT / "docs" / "evidence").mkdir(parents=True, exist_ok=True)
     (ROOT / "docs" / "evidence" / "demo.txt").write_text("\n".join(LINES) + "\n", encoding="utf-8")
